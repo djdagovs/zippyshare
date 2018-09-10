@@ -2,7 +2,7 @@
 # @Description: zippyshare.com file download script
 # @Author: Live2x
 # @URL: https://github.com/img2tab/zippyshare
-# @Version: 201806270001
+# @Version: 201809100001
 # @Date: 2018-06-27
 # @Usage: ./zippyshare.sh url
 
