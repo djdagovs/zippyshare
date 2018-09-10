@@ -1,7 +1,7 @@
 #!/bin/bash
 # @Description: zippyshare.com file download script
 # @Author: Live2x
-# @URL: https://github.com/ffluegel/zippyshare
+# @URL: https://github.com/img2tab/zippyshare
 # @Version: 201806270001
 # @Date: 2018-06-27
 # @Usage: ./zippyshare.sh url
@@ -28,7 +28,11 @@ function zippydownload()
         let retry+=1
         rm -f "${cookiefile}" 2> /dev/null
         rm -f "${infofile}" 2> /dev/null
-        curl -s -c "${cookiefile}" -o "${infofile}" -L "${url}"
+        wget -O "${infofile}" "${url}" \
+        --cookies=on \
+        --keep-session-cookies \
+        --save-cookies="${cookiefile}" \
+        --quiet
         filename="$( cat "${infofile}" | grep "/d/" | cut -d'/' -f5 | cut -d'"' -f1 | grep -o "[^ ]\+\(\+[^ ]\+\)*" )"
     done
 
@@ -80,8 +84,11 @@ function zippydownload()
     echo "${filename}"
 
     # Start download file
-    curl -# -A "${agent}" -e "${ref}" -H "Cookie: JSESSIONID=${jsessionid}" -C - "${dl}" -o "${filename}"
-
+    wget -c -O "${filename}" "${dl}" \
+    -q --show-progress \
+    --referer="${ref}" \
+    --cookies=off --header "Cookie: JSESSIONID=${jsessionid}" \
+    --user-agent="${agent}"
     rm -f "${cookiefile}" 2> /dev/null
     rm -f "${infofile}" 2> /dev/null
 }
