@@ -3,8 +3,12 @@
 # @Author: Live2x
 # @URL: https://github.com/img2tab/zippyshare
 # @Version: 201809100002
-# @Date: 2018-06-27
+# @Date: 2019-01-14
 # @Usage: ./zippyshare.sh url
+
+echo "No longer supported since Zippyshare downloading requires a more complete javascript implementation."
+echo "Please try one of the shell downloaders with a complete javascript implementation inseaad."
+exit
 
 if [ -z "${1}" ]
 then
