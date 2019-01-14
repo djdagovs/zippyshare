@@ -1,6 +1,7 @@
-# This script no longer works for all Zippyshare urls. Zippyshare requires better javascript handling than this script is intended to offer. There are other command-line downloaders with broader dependencies that do support Zippyshare.
+# This script no longer works for every Zippyshare url.
+### Zippyshare requires better javascript handling than this script is intended to offer. There are other command-line downloaders with broader dependencies that do support Zippyshare.
 
-### zippyshare.sh
+## zippyshare.sh
 ### bash script for downloading zippyshare files
 
 ##### Download single file from zippyshare
