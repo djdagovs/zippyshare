@@ -2,13 +2,9 @@
 # @Description: zippyshare.com file download script
 # @Author: Live2x
 # @URL: https://github.com/img2tab/zippyshare
-# @Version: 201809100002
-# @Date: 2019-01-14
+# @Version: 201901110001
+# @Date: 2019-01-11
 # @Usage: ./zippyshare.sh url
-
-echo "No longer supported since Zippyshare downloading requires a more complete javascript implementation."
-echo "Please try one of the shell downloaders with a complete javascript implementation inseaad."
-exit
 
 if [ -z "${1}" ]
 then
@@ -32,23 +28,21 @@ function zippydownload()
         let retry+=1
         rm -f "${cookiefile}" 2> /dev/null
         rm -f "${infofile}" 2> /dev/null
-        wget -O "${infofile}" "${url}" \
-        --cookies=on \
-        --keep-session-cookies \
-        --save-cookies="${cookiefile}" \
-        --quiet
-        filename="$( cat "${infofile}" | grep "/d/" | cut -d'/' -f5 | cut -d'"' -f1 | grep -o "[^ ]\+\(\+[^ ]\+\)*" )"
+        curl -s -c "${cookiefile}" -o "${infofile}" -L "${url}"
+        filename="$( cat "${infofile}" | grep "/d/" | cut -d'/' -f6 | cut -d'"' -f1 | grep -o "[^ ]\+\(\+[^ ]\+\)*" )"
     done
 
     if [ "${retry}" -ge 10 ]
     then
-        echo "could not download file"
-        exit 1
+        echo "could not download file from ${url}"
+        rm -f "${cookiefile}" 2> /dev/null
+        rm -f "${infofile}" 2> /dev/null
+        return 1
     fi
 
     # Get cookie
     if [ -f "${cookiefile}" ]
-    then
+    then 
         jsessionid="$( cat "${cookiefile}" | grep "JSESSIONID" | cut -f7)"
     else
         echo "can't find cookie file for ${prefix}"
@@ -58,10 +52,10 @@ function zippydownload()
     if [ -f "${infofile}" ]
     then
         # Get url algorithm
-        dlbutton="$( grep 'getElementById..dlbutton...href' "${infofile}" | grep -oE '\([0-9].*\)' )"
+        dlbutton="$( grep 'getElementById..dlbutton...href' "${infofile}" | grep -oE '[0-9]+%[0-9]+' | head -1)"
         if [ -n "${dlbutton}" ]
         then
-           algorithm="${dlbutton}"
+           algorithm="${dlbutton}+11"
         else
            echo "could not get zippyshare url algorithm"
            exit 1
@@ -83,23 +77,20 @@ function zippydownload()
     dl="https://${server}/d/${id}/${a}/${filename}"
 
     # Set browser agent
-    agent="Mozilla/5.0 (Macintosh; Intel Mac OS X 10_13_5) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/67.0.3396.87 Safari/537.36"
+    agent="Mozilla/5.0 (Macintosh; Intel Mac OS X 10_14_2) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/71.0.3578.98 Safari/537.36"
 
     echo "${filename}"
 
     # Start download file
-    wget -c -O "${filename}" "${dl}" \
-    -q --show-progress \
-    --referer="${ref}" \
-    --cookies=off --header "Cookie: JSESSIONID=${jsessionid}" \
-    --user-agent="${agent}"
+    curl -# -A "${agent}" -e "${ref}" -H "Cookie: JSESSIONID=${jsessionid}" -C - "${dl}" -o "${filename}"
+
     rm -f "${cookiefile}" 2> /dev/null
     rm -f "${infofile}" 2> /dev/null
 }
 
 if [ -f "${1}" ]
 then
-    for url in $( cat "${1}" | sed 's/\r$//' | grep -i 'zippyshare.com' )
+    for url in $( cat "${1}" | grep -i 'zippyshare.com' )
     do
         zippydownload "${url}"
     done
