@@ -2,8 +2,8 @@
 # @Description: zippyshare.com file download script
 # @Author: Live2x
 # @URL: https://github.com/img2tab/zippyshare
-# @Version: 201901110001
-# @Date: 2019-01-11
+# @Version: 201902100001
+# @Date: 2019-02-10
 # @Usage: ./zippyshare.sh url
 
 if [ -z "${1}" ]
@@ -33,7 +33,7 @@ function zippydownload()
         --keep-session-cookies \
         --save-cookies="${cookiefile}" \
         --quiet
-        filename="$( cat "${infofile}" | grep "/d/" | cut -d'/' -f6 | cut -d'"' -f1 | grep -o "[^ ]\+\(\+[^ ]\+\)*" )"
+        filename="$( grep "getElementById..dlbutton...href" "${infofile}" | cut -d"/" -f5 | sed "s/\";//g" )"
     done
 
     if [ "${retry}" -ge 10 ]
@@ -56,10 +56,10 @@ function zippydownload()
     if [ -f "${infofile}" ]
     then
         # Get url algorithm
-        dlbutton="$( grep 'getElementById..dlbutton...href' "${infofile}" | grep -oE '[0-9]+%[0-9]+' | head -1)"
+        dlbutton="$( grep 'var a = ' "${infofile}" | tail -n 1 | cut -d' ' -f8 | cut -d';' -f1 )"
         if [ -n "${dlbutton}" ]
         then
-           algorithm="${dlbutton}+11"
+           algorithm="$(( ${dlbutton} * ${dlbutton} * ${dlbutton} + 3))"
         else
            echo "could not get zippyshare url algorithm"
            exit 1
