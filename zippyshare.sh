@@ -55,17 +55,16 @@ function zippydownload()
 
     if [ -f "${infofile}" ]
     then
-        # Get url algorithm
+        # fake-parse javascript
         dlbutton="$( grep 'var a = ' "${infofile}" | tail -n 1 | cut -d' ' -f8 | cut -d';' -f1 )"
         if [ -n "${dlbutton}" ]
         then
-           algorithm="$(( ${dlbutton} * ${dlbutton} * ${dlbutton} + 3))"
+           fakeparsejs="$(( ${dlbutton} * ${dlbutton} * ${dlbutton} + 3))"
         else
-           echo "could not get zippyshare url algorithm"
+           echo "could not fake-parse zippyshare url javascript"
            exit 1
         fi
 
-        a="$( echo $(( ${algorithm} )) )"
         # Get ref, server, id
         ref="$( cat "${infofile}" | grep 'property="og:url"' | cut -d'"' -f4 | grep -o "[^ ]\+\(\+[^ ]\+\)*" )"
 
@@ -78,7 +77,7 @@ function zippydownload()
     fi
 
     # Build download url
-    dl="https://${server}/d/${id}/${a}/${filename}"
+    dl="https://${server}/d/${id}/${fakeparsejs}/${filename}"
 
     # Set browser agent
     agent="Mozilla/5.0 (Macintosh; Intel Mac OS X 10_14_2) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/71.0.3578.98 Safari/537.36"
