@@ -2,8 +2,8 @@
 # @Description: zippyshare.com file download script
 # @Author: Live2x
 # @URL: https://github.com/img2tab/zippyshare
-# @Version: 201902100001
-# @Date: 2019-02-10
+# @Version: 201904200001
+# @Date: 2019-04-20
 # @Usage: ./zippyshare.sh url
 
 if [ -z "${1}" ]
@@ -55,13 +55,14 @@ function zippydownload()
 
     if [ -f "${infofile}" ]
     then
-        # fake-parse javascript
-        dlbutton="$( grep 'var a = ' "${infofile}" | tail -n 1 | cut -d' ' -f8 | cut -d';' -f1 )"
-        if [ -n "${dlbutton}" ]
-        then
-           fakeparsejs="$(( ${dlbutton} * ${dlbutton} * ${dlbutton} + 3))"
-        else
-           echo "could not fake-parse zippyshare url javascript"
+        # Get url algorithm
+        a="$( grep 'var a = ' "${infofile}" | tail -n 1 | cut -d' ' -f8 | cut -d';' -f1 )"
+        a="$(( a / 3))"
+        b="$( grep 'var b = ' "${infofile}" | tail -n 1 | cut -d' ' -f8 | cut -d';' -f1 )"
+        dlbutton="$( grep 'document.getElementById..dlbutton' "${infofile}" | tail -n 1 | cut -d'=' -f2 | cut -d'(' -f2 | cut -d')' -f1 | grep -o "[0-9]*" )"
+        result="$(( ${dlbutton} % ${b} + ${a} ))"
+        if [ -z "${result}" ]; then
+           echo "could not get zippyshare url algorithm"
            exit 1
         fi
 
@@ -77,7 +78,7 @@ function zippydownload()
     fi
 
     # Build download url
-    dl="https://${server}/d/${id}/${fakeparsejs}/${filename}"
+    dl="https://${server}/d/${id}/${result}/${filename}"
 
     # Set browser agent
     agent="Mozilla/5.0 (Macintosh; Intel Mac OS X 10_14_2) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/71.0.3578.98 Safari/537.36"
