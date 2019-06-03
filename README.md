@@ -1,18 +1,26 @@
-zippyshare
-==========
+# 2019-04-20: works with current Zippyshare algorithm. Algorithm changes frequently, may not work soon.
 
-zippyshare download bash file.
+## zippyshare.sh
+### bash script for downloading zippyshare files
 
-Usage:
+##### Download single file from zippyshare
 
-I) Download single file from zippyshare:
+```bash
+./zippyshare.sh url
+```
 
-sh zippyshare.sh filename
+##### Batch-download files from URL list (url-list.txt must contain one zippyshare.com url per line)
 
-Example:
-sh zippyshare.sh http://www16.zippyshare.com/v/7230160/file.html
+```bash
+./zippyshare.sh url-list.txt
+```
 
-II) Batch download file from zippyshare:		
-Step 1: Add file URL to filelist.txt, one url per line.		
-Step 2: sh zippy.sh
+##### Example:
 
+```bash
+./zippyshare.sh https://www3.zippyshare.com/v/CDCi2wVT/file.html
+```
+
+zippyshare.sh uses `wget` with the `-C` flag, which skips over completed files and attempts to resume partially downloaded files.
+
+### Requirements: `coreutils`, `grep`, `sed`, **`wget`**

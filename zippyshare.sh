@@ -1,143 +1,107 @@
 #!/bin/bash
 # @Description: zippyshare.com file download script
 # @Author: Live2x
-# @URL: live2x.com
-# @Version: 1.0.20150709
-# @Date: 2015/07/09
-# @Usage: sh zippyshare.sh filename
+# @URL: https://github.com/img2tab/zippyshare
+# @Version: 201904200001
+# @Date: 2019-04-20
+# @Usage: ./zippyshare.sh url
 
-if [ -z "$1" ]; then
-    echo usage: $0 filename
+if [ -z "${1}" ]
+then
+    echo "usage: ${0} url"
+    echo "batch usage: ${0} url-list.txt"
+    echo "url-list.txt is a file that contains one zippyshare.com url per line"
     exit
 fi
 
-if [ -f "$1" ]; then
-  rm -f $1
-fi
+function zippydownload()
+{
+    prefix="$( echo -n "${url}" | cut -c "11,12,31-38" | sed -e 's/[^a-zA-Z0-9]//g' )"
+    cookiefile="${prefix}-cookie.tmp"
+    infofile="${prefix}-info.tmp"
 
-if [ -f "cookie.txt" ]; then
-  rm -f cookie.txt
-fi
+    # loop that makes sure the script actually finds a filename
+    filename=""
+    retry=0
+    while [ -z "${filename}" -a ${retry} -lt 10 ]
+    do
+        let retry+=1
+        rm -f "${cookiefile}" 2> /dev/null
+        rm -f "${infofile}" 2> /dev/null
+         wget -O "${infofile}" "${url}" \
+        --cookies=on \
+        --keep-session-cookies \
+        --save-cookies="${cookiefile}" \
+        --quiet
+        filename="$( grep "getElementById..dlbutton...href" "${infofile}" | cut -d"/" -f5 | sed "s/\";//g" )"
+    done
 
-wget -O info.txt $1 --cookies=on --keep-session-cookies --save-cookies=cookie.txt --quiet
-
-# Get cookie
-if [ -f "cookie.txt" ]; then 
-    jsessionid=$(cat cookie.txt | grep "JSESSIONID" | cut -f7)
-    #echo "JSESSIONID => "$jsessionid
-else
-    echo "can't find cookie file"
-    exit
-fi
-
-if [ -f "info.txt" ]; then
-    # Get url algorithm
-    algorithm=$(cat info.txt | grep -E "dlbutton(.*)\/d\/(.*)" | head -n 1 | cut -d'/' -f4 | cut -d'(' -f2 | cut -d')' -f1)
-    #echo "algorithm => "$algorithm
-
-    a=$(cat info.txt | grep "var a =" | head -n 1 | cut -d'=' -f2 | cut -d';' -f1 | grep -o "[^ ]\+\(\+[^ ]\+\)*")
-    #echo "a => "$a
-
-    if [[ $a != *[!0-9]* ]]; then
-      # $a is a digit
-      b=$(cat info.txt | grep "var b =" | head -n 1 | cut -d'=' -f2 | cut -d';' -f1 | grep -o "[^ ]\+\(\+[^ ]\+\)*")
-      a=$((a/3))
-      a=$((algorithm))
-    else
-      # Variables string to array
-      IFS=+ read  ar <<<$algorithm
-      IFS=* read  ar1 <<<$ar
-      read -a arr <<<$ar1
-
-      # Get variable array
-      for ((i=0;i<${#arr[@]};i+=2))
-      do
-        param[(i/2)]=${arr[i]}
-      done
-
-      # Number of variable 
-      #echo ${#param[@]}
-
-      for ((i=0;i<${#param[@]};i++))
-      do
-
-        if [[ ${param[i]} != *[!0-9]* ]]; then
-	  x = ${param[i]}
-
-        else
-          if [[ $i < 3 ]]; then
-            x=$(cat info.txt | grep "var ${param[i]} =" | head -n 1 | cut -d'=' -f2 | cut -d';' -f1)
-          else
-            x=$(cat info.txt | grep "var ${param[i]} =" | tail -n 1 | cut -d'=' -f2 | cut -d';' -f1)
-          fi
-        fi
-
-        if [[ $x != *[!0-9]* ]]; then
-	  vi[i]=$x
-        else
-          v[i]=$((x))
-        fi
-      done
-
-      ret=${v[0]}
-
-      for ((i=0;i<${#param[@]};i+=1))
-      do
-        ret="$ret${arr[2*i+1]}${v[i+1]}"
-      done
-
-      a=$((ret))
+    if [ "${retry}" -ge 10 ]
+    then
+        echo "could not download file from ${url}"
+        rm -f "${cookiefile}" 2> /dev/null
+        rm -f "${infofile}" 2> /dev/null
+        return 1
     fi
 
-    #echo "a="$a
+    # Get cookie
+    if [ -f "${cookiefile}" ]
+    then 
+        jsessionid="$( cat "${cookiefile}" | grep "JSESSIONID" | cut -f7)"
+    else
+        echo "can't find cookie file for ${prefix}"
+        exit 1
+    fi
 
-    # Get server, filename, id, reffer
-    filename=$(cat info.txt | grep "/d/" | cut -d'/' -f5 | cut -d'"' -f1 | grep -o "[^ ]\+\(\+[^ ]\+\)*")
-    #echo "filename => "$filename
-    
-    reffer=$(cat info.txt | grep "property=\"og:url\"" | cut -d'"' -f4 | grep -o "[^ ]\+\(\+[^ ]\+\)*")
-    #echo "reffer => "$reffer
+    if [ -f "${infofile}" ]
+    then
+        # Get url algorithm
+        a="$( grep 'var a = ' "${infofile}" | tail -n 1 | cut -d' ' -f8 | cut -d';' -f1 )"
+        a="$(( a / 3))"
+        b="$( grep 'var b = ' "${infofile}" | tail -n 1 | cut -d' ' -f8 | cut -d';' -f1 )"
+        dlbutton="$( grep 'document.getElementById..dlbutton' "${infofile}" | tail -n 1 | cut -d'=' -f2 | cut -d'(' -f2 | cut -d')' -f1 | grep -o "[0-9]*" )"
+        result="$(( ${dlbutton} % ${b} + ${a} ))"
+        if [ -z "${result}" ]; then
+           echo "could not get zippyshare url algorithm"
+           exit 1
+        fi
 
-    server=`echo "$reffer" | cut -d'/' -f3`
-    #echo "server => "$server
+        # Get ref, server, id
+        ref="$( cat "${infofile}" | grep 'property="og:url"' | cut -d'"' -f4 | grep -o "[^ ]\+\(\+[^ ]\+\)*" )"
 
-    id=`echo "$reffer" | cut -d'/' -f5`
-    #echo "id => "$id
+        server="$( echo "${ref}" | cut -d'/' -f3 )"
+
+        id="$( echo "${ref}" | cut -d'/' -f5 )"
+    else
+        echo "can't find info file for ${prefix}"
+        exit 1
+    fi
+
+    # Build download url
+    dl="https://${server}/d/${id}/${result}/${filename}"
+
+    # Set browser agent
+    agent="Mozilla/5.0 (Macintosh; Intel Mac OS X 10_14_2) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/71.0.3578.98 Safari/537.36"
+
+    echo "${filename}"
+
+    # Start download file
+     wget -c -O "${filename}" "${dl}" \
+    -q --show-progress \
+    --referer="${ref}" \
+    --cookies=off --header "Cookie: JSESSIONID=${jsessionid}" \
+    --user-agent="${agent}"
+    rm -f "${cookiefile}" 2> /dev/null
+    rm -f "${infofile}" 2> /dev/null
+}
+
+if [ -f "${1}" ]
+then
+    for url in $( cat "${1}" | grep -i 'zippyshare.com' )
+    do
+        zippydownload "${url}"
+    done
 else
-    echo "can't find info file"
-    exit
+    url="${1}"
+    zippydownload "${url}"
 fi
-
-if [[ $a != *[!0-9]* ]]; then
-  # Build download url
-  dl="http://"$server"/d/"$id"/"$a"/"$filename
-  #echo "url => "$dl
-
-  # Set brower agent
-  agent="Mozilla/5.0 (Windows NT 6.3; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/36.0.1985.125 Safari/537.36"
-
-  # Start download file
-  echo -ne "\033[33m $filename download start...      \033[0m"
-  wget -c -O $filename $dl \
-  --referer='$reffer' \
-  --cookies=off --header "Cookie: JSESSIONID=$jsessionid" \
-  --user-agent='$agent' \
-  --progress=dot \
-  2>&1 \
-  | grep --line-buffered "%" | sed -u -e "s,\.,,g" | awk '{printf("\b\b\b\b\b\b\b[\033[36m%4s\033[0m ]", $2)}'
-  echo -ne "\b\b\b\b\b\b\b"
-  echo -e "[\033[32m Done \033[0m]"
-
-  if [[ -s $filename ]]; then
-    echo -e "\033[32m Download success! \033[0m"
-  else
-    rm -f ${filename}
-    echo -e "\033[31m Download error! \033[0m"
-  fi
-else
-  # Download url error
-  echo -e "\033[31m Zippyshare.com algorithm changed, please update script! \033[0m"
-fi
-
-rm -f cookie.txt
-rm -f info.txt
